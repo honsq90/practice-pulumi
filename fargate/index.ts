@@ -9,15 +9,13 @@ const logGroup = new aws.cloudwatch.LogGroup("nginx-log")
 
 const elasticStream = new aws.elasticsearch.Domain("nginx-log-stream", {
     clusterConfig: {
-        instanceType: "r4.large.elasticsearch",
+        instanceType: "t2.micro.elasticsearch",
+    },
+    ebsOptions: {
+        ebsEnabled: true,
+        volumeSize: 10,
     },
     elasticsearchVersion: "1.5",
-    snapshotOptions: {
-        automatedSnapshotStartHour: 23,
-    },
-    tags: {
-        Domain: "TestDomain",
-    },
 })
 
 // Define the service, building and publishing our "./app/Dockerfile", and using the load balancer.
@@ -37,5 +35,7 @@ const service = new awsx.ecs.FargateService("nginx", {
 
 // Export the URL so we can easily access it.
 export const frontendURL = pulumi.interpolate `https://${listener.endpoint.hostname}/`;
+
+export const kibanaUrl = elasticStream.kibanaEndpoint
 
 export const serviceArn = service.urn
