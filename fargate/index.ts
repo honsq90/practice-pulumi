@@ -7,6 +7,19 @@ const listener = new awsx.elasticloadbalancingv2.NetworkListener("nginx", { port
 
 const logGroup = new aws.cloudwatch.LogGroup("nginx-log")
 
+const elasticStream = new aws.elasticsearch.Domain("nginx-log-stream", {
+    clusterConfig: {
+        instanceType: "r4.large.elasticsearch",
+    },
+    elasticsearchVersion: "1.5",
+    snapshotOptions: {
+        automatedSnapshotStartHour: 23,
+    },
+    tags: {
+        Domain: "TestDomain",
+    },
+})
+
 // Define the service, building and publishing our "./app/Dockerfile", and using the load balancer.
 const service = new awsx.ecs.FargateService("nginx", {
     desiredCount: 2,
