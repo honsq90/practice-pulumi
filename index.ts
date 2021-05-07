@@ -7,3 +7,9 @@ const bucket = new aws.s3.Bucket("my-bucket");
 
 // Export the name of the bucket
 export const bucketName = bucket.id;
+
+const bucketObject = new aws.s3.BucketObject("index.html", {
+    bucket: bucket,
+    source: new pulumi.asset.FileAsset("index.html")
+});
+
