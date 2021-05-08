@@ -1,7 +1,6 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 
-export const logGroup = new aws.cloudwatch.LogGroup("nginx-log");
 const logStreamName = "nginx-log-stream";
 
 export const elasticStream = new aws.elasticsearch.Domain(logStreamName, {
@@ -50,7 +49,7 @@ const elasticStreamLambdaIamRolePolicy = new aws.iam.RolePolicy(`${logStreamName
     policy: elasticStreamLambdaIamPolicy.policy,
 });
 
-const lambda = new aws.lambda.Function(`LogsToElasticsearch-${logStreamName}`, {
+const logStreamLambda = new aws.lambda.Function(`LogsToElasticsearch-${logStreamName}`, {
     handler: "index.handler",
     runtime: "nodejs12.x",
     role: elasticStreamLambdaIamRole.arn,
@@ -63,3 +62,12 @@ const lambda = new aws.lambda.Function(`LogsToElasticsearch-${logStreamName}`, {
         },
     },
 });
+
+const cloudwatchLogGroup = "nginx-log";
+export const logGroup = new aws.cloudwatch.LogGroup(cloudwatchLogGroup);
+
+new aws.cloudwatch.LogSubscriptionFilter(`${cloudwatchLogGroup}-subscription-filter`, {
+    destinationArn: logStreamLambda.arn,
+    filterPattern: "",
+    logGroup: logGroup
+})
