@@ -49,3 +49,17 @@ const elasticStreamLambdaIamRolePolicy = new aws.iam.RolePolicy(`${logStreamName
     role: elasticStreamLambdaIamRole,
     policy: elasticStreamLambdaIamPolicy.policy,
 });
+
+const lambda = new aws.lambda.Function(`LogsToElasticsearch-${logStreamName}`, {
+    handler: "index.handler",
+    runtime: "nodejs12.x",
+    role: elasticStreamLambdaIamRole.arn,
+    // relative to Pulumi.yaml
+    code: new pulumi.asset.FileArchive("logging/LogsToElasticSearch"),
+    description: "Ships logs from Cloudwatch to ElasticSearch",
+    environment: {
+        variables: {
+            ES_ENDPOINT: elasticStream.endpoint,
+        },
+    },
+});
