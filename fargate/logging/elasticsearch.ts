@@ -6,6 +6,7 @@ const nameCloudwatchLogGroup = "nginx-log";
 const nameLogGroupSubscriptionFilter = `${nameCloudwatchLogGroup}-subscription-filter`;
 const current = aws.getCallerIdentity({});
 export const accountId = current.then(current => current.accountId);
+export const region = aws.getRegion().then(region => region.name);
 
 export const elasticStream = new aws.elasticsearch.Domain(nameNginxLogStream, {
     clusterConfig: {
@@ -86,8 +87,7 @@ export const logStreamLambda = new aws.lambda.Function(`LogsToElasticsearch-${na
 const logStreamLambdaInvokePermission = new aws.lambda.Permission(`${nameCloudwatchLogGroup}-invoke-permission`, {
     action: "lambda:InvokeFunction",
     function: logStreamLambda.name,
-    // requires the region of the log service
-    principal: "logs.ap-southeast-2.amazonaws.com",
+    principal: pulumi.interpolate`logs.${region}.amazonaws.com`,
     sourceArn: pulumi.interpolate`${cloudwatchLogGroup.arn}:*`,
     sourceAccount: accountId,
 }, {
