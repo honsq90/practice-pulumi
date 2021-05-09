@@ -1,14 +1,17 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 
-const nameNginxLogStream = "nginx-log-stream";
+const nameElasticNginxLogStream = "nginx-log-stream";
 const nameCloudwatchLogGroup = "nginx-log";
 const nameLogGroupSubscriptionFilter = `${nameCloudwatchLogGroup}-subscription-filter`;
 const current = aws.getCallerIdentity({});
 export const accountId = current.then(current => current.accountId);
 export const region = aws.getRegion().then(region => region.name);
 
-export const elasticStream = new aws.elasticsearch.Domain(nameNginxLogStream, {
+const config = new pulumi.Config("whitelist");
+const ipAddress = config.requireSecret("ipAddress");
+
+export const elasticStream = new aws.elasticsearch.Domain(nameElasticNginxLogStream, {
     clusterConfig: {
         instanceType: "t2.micro.elasticsearch",
     },
@@ -17,13 +20,34 @@ export const elasticStream = new aws.elasticsearch.Domain(nameNginxLogStream, {
         volumeSize: 10,
     },
     elasticsearchVersion: "1.5",
+    accessPolicies: {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": ["*"],
+                },
+                "Action": [
+                    "es:ESHttp*",
+                ],
+                "Condition": {
+                    "IpAddress": {
+                        "aws:SourceIp": [
+                            pulumi.interpolate`${ipAddress}/24`,
+                        ],
+                    },
+                },
+            },
+        ],
+    }
 });
 
-export const cloudwatchLogGroup = new aws.cloudwatch.LogGroup(nameCloudwatchLogGroup,{
+export const cloudwatchLogGroup = new aws.cloudwatch.LogGroup(nameCloudwatchLogGroup, {
     retentionInDays: 7,
 });
 
-const elasticStreamLambdaIamRole = new aws.iam.Role(`${nameNginxLogStream}-lambda-role`, {
+const elasticStreamLambdaIamRole = new aws.iam.Role(`${nameElasticNginxLogStream}-lambda-role`, {
     assumeRolePolicy: {
         "Version": "2012-10-17",
         "Statement": [
@@ -41,7 +65,7 @@ const elasticStreamLambdaIamRole = new aws.iam.Role(`${nameNginxLogStream}-lambd
     ]
 });
 
-new aws.iam.RolePolicy(`${nameNginxLogStream}-lambda-role-elastic-policy`, {
+new aws.iam.RolePolicy(`${nameElasticNginxLogStream}-lambda-role-elastic-policy`, {
     role: elasticStreamLambdaIamRole,
     policy: {
         "Version": "2012-10-17",
@@ -55,7 +79,7 @@ new aws.iam.RolePolicy(`${nameNginxLogStream}-lambda-role-elastic-policy`, {
     },
 });
 
-new aws.iam.RolePolicy(`${nameNginxLogStream}-lambda-role-invoke-policy`, {
+new aws.iam.RolePolicy(`${nameElasticNginxLogStream}-lambda-role-invoke-policy`, {
     role: elasticStreamLambdaIamRole,
     policy: {
         "Version": "2012-10-17",
@@ -69,7 +93,7 @@ new aws.iam.RolePolicy(`${nameNginxLogStream}-lambda-role-invoke-policy`, {
     },
 });
 
-export const logStreamLambda = new aws.lambda.Function(`LogsToElasticsearch-${nameNginxLogStream}`, {
+export const logStreamLambda = new aws.lambda.Function(`LogsToElasticsearch-${nameElasticNginxLogStream}`, {
     handler: "index.handler",
     runtime: "nodejs12.x",
     role: elasticStreamLambdaIamRole.arn,

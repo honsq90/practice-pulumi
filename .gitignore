@@ -102,3 +102,6 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Pulumi stack config
+Pulumi.*.yaml

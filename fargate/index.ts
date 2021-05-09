@@ -21,8 +21,8 @@ const service = new awsx.ecs.FargateService("nginx", {
 });
 
 // Export the URL so we can easily access it.
-export const frontendURL = pulumi.interpolate`https://${listener.endpoint.hostname}/`;
-export const kibanaUrl =  pulumi.interpolate`https://${elasticStream.kibanaEndpoint}/`;
+export const frontendURL = pulumi.interpolate`http://${listener.endpoint.hostname}`;
+export const kibanaUrl =  pulumi.interpolate`https://${elasticStream.kibanaEndpoint}`;
 export const elasticStreamArn = elasticStream.arn;
 export const lambdaArn = logStreamLambda.arn;
 export const lambdaName = logStreamLambda.name;
